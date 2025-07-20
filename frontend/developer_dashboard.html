@@ -811,6 +811,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
     // Check authentication
+    let clockStartTime = null;
+    let clockInterval = null;
+
     const token = localStorage.getItem('authToken');
     const employeeId = localStorage.getItem('employeeId');
     const role = localStorage.getItem('role');
@@ -918,45 +921,68 @@
     
     // Helper function to update time tracking UI
     function updateTimeTrackingUI(data) {
-        // Update clock buttons state
-        if (data.status === 'clocked-in') {
-            document.getElementById('clockInBtn').disabled = true;
-            document.getElementById('clockOutBtn').disabled = false;
-            
-            const statusText = data.lastClockIn ? 
-                `Clocked In (since ${new Date(data.lastClockIn).toLocaleTimeString()})` : 
-                'Clocked In';
-                
-            document.getElementById('trackingStatus').className = 'tracking-status clocked-in';
-            document.getElementById('trackingStatus').innerHTML = `
-                <i class="fas fa-clock"></i> Currently: ${statusText}
-            `;
-        } else {
-            document.getElementById('clockInBtn').disabled = false;
-            document.getElementById('clockOutBtn').disabled = true;
-            document.getElementById('trackingStatus').className = 'tracking-status clocked-out';
-            document.getElementById('trackingStatus').innerHTML = `
-                <i class="fas fa-clock"></i> Currently: Clocked Out
-            `;
-        }
+    if (data.status === 'clocked-in') {
+        document.getElementById('clockInBtn').disabled = true;
+        document.getElementById('clockOutBtn').disabled = false;
 
-        // Update activity log
-        const todayActivity = document.getElementById('todayActivity');
-        todayActivity.innerHTML = '';
-        
-        if (data.activities && data.activities.length > 0) {
-            data.activities.forEach(activity => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${new Date(activity.time).toLocaleTimeString()}</td>
-                    <td>${activity.action === 'clock-in' ? 'Clocked In' : 'Clocked Out'}</td>
-                    <td>${activity.duration ? `${activity.duration} hours` : '-'}</td>
-                `;
-                todayActivity.appendChild(row);
-            });
-        }
+        // Set global clockStartTime from lastClockIn
+        clockStartTime = new Date(data.lastClockIn);
+        startClockTimer(); // Start the real-time clock update
+
+        document.getElementById('trackingStatus').className = 'tracking-status clocked-in';
+    } else {
+        document.getElementById('clockInBtn').disabled = false;
+        document.getElementById('clockOutBtn').disabled = true;
+
+        stopClockTimer(); // Stop real-time timer if running
+
+        document.getElementById('trackingStatus').className = 'tracking-status clocked-out';
+        document.getElementById('trackingStatus').innerHTML = `
+            <i class="fas fa-clock"></i> Currently: Clocked Out
+        `;
     }
-    
+
+    // Update activity log
+    const todayActivity = document.getElementById('todayActivity');
+    todayActivity.innerHTML = '';
+
+    if (data.activities && data.activities.length > 0) {
+        data.activities.forEach(activity => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${new Date(activity.time).toLocaleTimeString()}</td>
+                <td>${activity.action === 'clock-in' ? 'Clocked In' : 'Clocked Out'}</td>
+                <td>${activity.duration ? `${activity.duration} hours` : '-'}</td>
+            `;
+            todayActivity.appendChild(row);
+        });
+    }
+}
+function startClockTimer() {
+    stopClockTimer(); // Clear any existing interval
+    clockInterval = setInterval(() => {
+        const now = new Date();
+        const elapsedMs = now - clockStartTime;
+
+        const hours = Math.floor(elapsedMs / (1000 * 60 * 60));
+        const minutes = Math.floor((elapsedMs / (1000 * 60)) % 60);
+        const seconds = Math.floor((elapsedMs / 1000) % 60);
+
+        const timeStr = `${hours}h ${minutes}m ${seconds}s`;
+
+        document.getElementById('trackingStatus').innerHTML = `
+            <i class="fas fa-clock"></i> Currently: Clocked In (Elapsed: ${timeStr})
+        `;
+    }, 1000);
+}
+
+function stopClockTimer() {
+    if (clockInterval) {
+        clearInterval(clockInterval);
+        clockInterval = null;
+    }
+}
+
     // Helper function to initialize event listeners
     function initializeEventListeners() {
         // Logout button

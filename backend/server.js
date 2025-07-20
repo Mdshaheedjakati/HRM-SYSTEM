@@ -1,277 +1,68 @@
-// const express = require('express');
-// const mongoose = require('mongoose');
-// const cors = require('cors');
-// const jwt = require('jsonwebtoken');
-// const path = require('path');
-
-// const app = express();
-// app.use(cors({
-//     origin: ['http://127.0.0.1:5500', 'http://localhost:3000'],
-//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//     allowedHeaders: ['Content-Type', 'Authorization'],
-//     credentials: true
-// }));
-
-// // Handle preflight requests
-// app.options('*', cors());
-
-// // Other middleware
-// app.use(express.json());
-// app.use(express.static(path.join(__dirname, 'public')));
-
-// // MongoDB connection (unchanged)
-// const mongoURI = 'mongodb+srv://01fe22bcs259:Sagar@cluster0.v0jo1.mongodb.net/hrm_system';
-// mongoose.connect(mongoURI, { 
-//     useNewUrlParser: true, 
-//     useUnifiedTopology: true 
-// })
-// .then(() => console.log('MongoDB connected'))
-// .catch(err => console.error('MongoDB connection error:', err));
-
-// // Models (unchanged)
-// const LoginSchema = new mongoose.Schema({
-//     employeeId: { type: String, required: true, unique: true },
-//     password: { type: String, required: true }
-// });
-// const EmployeeSchema = new mongoose.Schema({
-//     employeeId: { type: String, required: true, unique: true },
-//     name: { type: String, required: true },
-//     email: { type: String, required: true, unique: true },
-//     mobile: { type: String, required: true },
-//     role: { type: String, required: true, enum: ['HR', 'Team Lead', 'Developer'] },
-//     teamId: { type: String },
-//     teamName: { type: String }
-// });
-
-// // const EmployeeSchema = new mongoose.Schema({
-// //     employeeId: { type: String, required: true, unique: true },
-// //     name: { type: String, required: true },
-// //     email: { type: String, required: true, unique: true },
-// //     mobile: { type: String, required: true },
-// //     role: { type: String, required: true, enum: ['HR', 'Team Lead', 'Developer'] }
-// // });
-
-// const Login = mongoose.model('Login', LoginSchema);
-// const Employee = mongoose.model('Employee', EmployeeSchema);
-
-// // JWT Secret
-// const JWT_SECRET = 'your_jwt_secret_key_here';
-
-
-// // Update Employee Schema to include teamId and teamName
-
-// // 7. Update Employee (including role change)
-// app.put('/api/employees/:employeeId', async (req, res) => {
-//     const token = req.headers.authorization?.split(' ')[1];
-//     if (!token) return res.status(401).json({ message: 'No token provided' });
-
-//     try {
-//         jwt.verify(token, JWT_SECRET);
-        
-//         const { employeeId } = req.params;
-//         const updateData = req.body;
-
-//         // Handle role change
-//         if (updateData.role) {
-//             const currentEmployee = await Employee.findOne({ employeeId });
-            
-//             // If changing from Team Lead, remove their team
-//             if (currentEmployee.role === 'Team Lead' && updateData.role !== 'Team Lead') {
-//                 await Team.deleteOne({ leadId: employeeId });
-//                 // Update team references for team members
-//                 await Employee.updateMany(
-//                     { teamId: currentEmployee.teamId },
-//                     { $unset: { teamId: "", teamName: "" } }
-//                 );
-//             }
-            
-//             // If changing to Team Lead, create new team
-//             if (updateData.role === 'Team Lead' && currentEmployee.role !== 'Team Lead') {
-//                 const newTeam = new Team({
-//                     name: `Team ${employeeId}`,
-//                     leadId: employeeId,
-//                     leadName: currentEmployee.name,
-//                     memberIds: []
-//                 });
-//                 await newTeam.save();
-//                 updateData.teamId = newTeam._id;
-//                 updateData.teamName = newTeam.name;
-//             }
-//         }
-
-//         const updatedEmployee = await Employee.findOneAndUpdate(
-//             { employeeId },
-//             updateData,
-//             { new: true }
-//         );
-
-//         if (!updatedEmployee) {
-//             return res.status(404).json({ message: 'Employee not found' });
-//         }
-
-//         // Also update login credentials if needed
-//         if (updateData.password) {
-//             await Login.findOneAndUpdate(
-//                 { employeeId },
-//                 { password: updateData.password }
-//             );
-//         }
-
-//         res.json(updatedEmployee);
-//     } catch (error) {
-//         console.error('Error updating employee:', error);
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// });
-
-// // 8. Delete Employee
-// app.delete('/api/employees/:employeeId', async (req, res) => {
-//     const token = req.headers.authorization?.split(' ')[1];
-//     if (!token) return res.status(401).json({ message: 'No token provided' });
-
-//     try {
-//         jwt.verify(token, JWT_SECRET);
-        
-//         const { employeeId } = req.params;
-//         const employee = await Employee.findOne({ employeeId });
-
-//         if (!employee) {
-//             return res.status(404).json({ message: 'Employee not found' });
-//         }
-
-//         // Handle team lead deletion
-//         if (employee.role === 'Team Lead') {
-//             await Team.deleteOne({ leadId: employeeId });
-//             // Remove team references from members
-//             await Employee.updateMany(
-//                 { teamId: employee.teamId },
-//                 { $unset: { teamId: "", teamName: "" } }
-//             );
-//         } else if (employee.teamId) {
-//             // Remove from team member list if developer
-//             await Team.updateOne(
-//                 { _id: employee.teamId },
-//                 { $pull: { memberIds: employeeId } }
-//             );
-//         }
-
-//         // Delete from both collections
-//         await Employee.deleteOne({ employeeId });
-//         await Login.deleteOne({ employeeId });
-
-//         res.json({ success: true, message: 'Employee deleted successfully' });
-//     } catch (error) {
-//         console.error('Error deleting employee:', error);
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// });
-
-// // 9. Get single employee details
-// app.get('/api/employees/:employeeId', async (req, res) => {
-//     const token = req.headers.authorization?.split(' ')[1];
-//     if (!token) return res.status(401).json({ message: 'No token provided' });
-
-//     try {
-//         jwt.verify(token, JWT_SECRET);
-        
-//         const { employeeId } = req.params;
-//         const employee = await Employee.findOne({ employeeId });
-
-//         if (!employee) {
-//             return res.status(404).json({ message: 'Employee not found' });
-//         }
-
-//         res.json(employee);
-//     } catch (error) {
-//         console.error('Error getting employee:', error);
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// });
-// const publicPath = path.join(__dirname, '../'); // Goes up one level from backend
-// app.use(express.static(publicPath));
-
-// // Static file routes (unchanged)
-// app.get('/', (req, res) => {
-//     res.sendFile(path.join(__dirname, 'public', 'index.html'));
-// });
-
-// app.get('/hr_login.html', (req, res) => {
-//     res.sendFile(path.join(__dirname, 'public', 'hr_login.html'));
-// });
-
-// app.get('/teamLead_login.html', (req, res) => {
-//     res.sendFile(path.join(__dirname, 'public', 'teamLead_login.html'));
-// });
-
-// app.get('/developer_login.html', (req, res) => {
-//     res.sendFile(path.join(__dirname, 'public', 'developer_login.html'));
-// });
-
-// app.get('/hr_dashboard.html', (req, res) => {
-//     res.sendFile(path.join(__dirname, 'public', 'hr_dashboard.html'));
-// });
-
-// app.get('/teamlead_dashboard.html', (req, res) => {
-//     res.sendFile(path.join(__dirname, 'public', 'teamlead_dashboard.html'));
-// });
-
-// app.get('/developer_dashboard.html', (req, res) => {
-//     res.sendFile(path.join(__dirname, 'public', 'developer_dashboard.html'));
-// });
-
-// // API Endpoints with CORS headers
-// app.post('/api/login', async (req, res) => {
-//     // Set CORS headers
-//     res.header('Access-Control-Allow-Origin', req.headers.origin || 'http://127.0.0.1:5500');
-//     res.header('Access-Control-Allow-Credentials', 'true');
-    
-//     const { employeeId, password, role } = req.body;
-
-//     try {
-//         const user = await Login.findOne({ employeeId });
-//         if (!user) {
-//             return res.status(401).json({ message: 'Invalid credentials' });
-//         }
-
-//         if (user.password !== password) {
-//             return res.status(401).json({ message: 'Invalid credentials' });
-//         }
-
-//         const employee = await Employee.findOne({ employeeId });
-//         if (!employee) {
-//             return res.status(401).json({ message: 'Employee not found' });
-//         }
-
-//         if (employee.role !== role) {
-//             return res.status(403).json({ message: 'Access denied for this role' });
-//         }
-
-//         const token = jwt.sign(
-//             { employeeId: user.employeeId, role: employee.role },
-//             JWT_SECRET,
-//             { expiresIn: '1h' }
-//         );
-
-//         res.json({ 
-//             token,
-//             employeeId: user.employeeId,
-//             role: employee.role,
-//             name: employee.name
-//         });
-//     } catch (error) {
-//         console.error('Login error:', error);
-//         res.status(500).json({ message: 'Server error' });
-//     }
-// });
-
+require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
-const jwt = require('jsonwebtoken');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
+const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+const mongoose = require('mongoose'); // ✅ Don't forget this!
 
 const app = express();
+
+
+// Create transporter
+const transporter = require('nodemailer').createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    }
+});
+
+
+
+// Email sending function
+async function sendEmail(to, name, teamLeadName) {
+    const subject = '⏰ Reminder: Submit Your Weekly Availability';
+
+    const text = `Hi ${name},
+
+This is a friendly reminder to submit your *weekly availability* in the HRM system.
+
+Submitting your availability helps the team with effective planning, task allocation, and ensures smooth collaboration for the upcoming week.
+
+👉 Please log in to your dashboard and update your schedule as soon as possible.
+
+If you've already submitted it, kindly disregard this message.
+
+Thank you for your attention!
+
+Best regards,  
+${teamLeadName}  
+Team Lead, AI Tech HRM
+`;
+
+    const mailOptions = {
+        from: 'mshaheed840@gmail.com',
+        to,
+        subject,
+        text
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log('✅ Email sent:', info.response);
+    } catch (error) {
+        console.error('❌ Error sending email:', error);
+    }
+}
+
+// Run this inside an async function to avoid top-level await error
+(async () => {
+    await sendEmail('developer@example.com', 'John Doe', 'Shaheed');
+})();
+
+
 
 // CORS Configuration
 const allowedOrigins = [
@@ -748,6 +539,34 @@ app.get('/api/teams', async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+// 🔄 Get developers under a specific Team Lead
+app.get('/api/team-members/:leadId', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'No token provided' });
+
+    try {
+        jwt.verify(token, JWT_SECRET);
+        const { leadId } = req.params;
+
+        const team = await Team.findOne({ leadId });
+        if (!team) {
+            return res.status(404).json({ message: 'No team found for this Team Lead' });
+        }
+
+        const members = await Employee.find(
+  { teamId: team._id, role: 'Developer' },
+  '-_id employeeId name email mobile phone availability'
+);
+
+
+
+        res.json({ teamName: team.name, members });
+    } catch (error) {
+        console.error('Error fetching team members:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // Add these schemas before the API endpoints
 const AvailabilitySchema = new mongoose.Schema({
     employeeId: { 
@@ -833,6 +652,28 @@ const Feedback = mongoose.model('Feedback', FeedbackSchema);
 const Performance = mongoose.model('Performance', PerformanceSchema);
 
 // Add these API endpoints after your existing endpoints
+// Reminder Email Endpoint
+app.post('/api/send-reminder', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.role !== 'Team Lead') return res.status(403).json({ message: 'Forbidden' });
+
+        const { employeeId, email, name } = req.body;
+
+        const subject = 'Reminder: Submit Your Weekly Availability';
+        const message = `Hi ${name},\n\nThis is a reminder from your Team Lead to submit your weekly availability in the HRM system.\n\nThank you,\nAI Tech HRM`;
+
+        await sendEmail(email, subject, message);
+
+        res.json({ success: true, message: 'Reminder sent successfully' });
+    } catch (err) {
+        console.error('Reminder error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 
 // 1. Availability APIs
 // Submit Availability
@@ -892,7 +733,7 @@ app.post('/api/submit-availability', async (req, res) => {
             message: 'Server error',
             error: error.message 
         });
-    }
+    }   
 });
 
 // Get Availability
@@ -1280,6 +1121,63 @@ app.post('/api/request-feedback', async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 });
+// ✅ API: Get weekly availability of all developers under a team lead
+app.get('/api/team-members-availability/:leadId', async (req, res) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'No token provided' });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        const { leadId } = req.params;
+
+        const team = await Team.findOne({ leadId });
+        if (!team) {
+            return res.status(404).json({ message: 'Team not found for this Team Lead' });
+        }
+
+        // Calculate start of the week (Monday)
+        const today = new Date();
+        const monday = new Date(today.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)));
+        monday.setHours(0, 0, 0, 0);
+        const nextMonday = new Date(monday.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+        // Get all developers in the team
+        const members = await Employee.find({
+            employeeId: { $in: team.memberIds },
+            role: 'Developer'
+        });
+
+        // Fetch each developer's availability
+        const availabilityData = await Promise.all(
+            members.map(async (member) => {
+                const availability = await Availability.findOne({
+                    employeeId: member.employeeId,
+                    weekStartDate: {
+                        $gte: monday,
+                        $lt: nextMonday
+                    }
+                });
+
+                return {
+                    employeeId: member.employeeId,
+                    name: member.name,
+                    email: member.email,
+                    availabilitySubmitted: !!availability,
+                    availability: availability?.availability || null
+                };
+            })
+        );
+
+        res.json({
+            teamName: team.name,
+            developers: availabilityData
+        });
+
+    } catch (error) {
+        console.error('Error in team availability API:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
 
 // Helper function to update performance metrics
 async function updatePerformanceMetrics(employeeId, hoursWorked) {
@@ -1291,8 +1189,8 @@ async function updatePerformanceMetrics(employeeId, hoursWorked) {
 
     // Update hours completed
     performance.hoursCompleted = (performance.hoursCompleted || 0) + hoursWorked;
-    
-    // Simple algorithm to update other metrics (can be enhanced)
+
+    // Update performance metrics based on hours completed
     if (performance.hoursCompleted >= 36) {
         performance.onTimeAvailability = 100;
         performance.activityVariance = 0;
@@ -1304,9 +1202,22 @@ async function updatePerformanceMetrics(employeeId, hoursWorked) {
         performance.productivityScore = Math.max(70, Math.round(progress * 100));
     }
 
+    // Update last modified timestamp
     performance.lastUpdated = new Date();
+
+    // Save updated performance record
     await performance.save();
+
+    // Send performance update email to the employee
+    const employee = await Employee.findOne({ employeeId });
+    if (employee && employee.email) {
+        const subject = 'Your Performance Has Been Updated';
+        const message = `Hi ${employee.name},\n\nYour performance has been updated.\n\nHours Completed: ${performance.hoursCompleted}\nAvailability: ${performance.onTimeAvailability}%\nProductivity Score: ${performance.productivityScore}%\n\nPlease check your dashboard for details.\n\nBest,\nTeam Lead`;
+
+        await sendEmail(employee.email, subject, message);
+    }
 }
+
 
 // Add this to the end of your file, before app.listen
 console.log('All APIs loaded successfully');
